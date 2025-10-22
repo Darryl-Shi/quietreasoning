@@ -57,7 +57,7 @@ class DataSource:
 PRETRAIN_PLAN: List[DataSource] = [
     DataSource("fineweb1", "HuggingFaceFW/fineweb", None, "train", 0.55, "text"),
     DataSource("redpajama_v2", "togethercomputer/RedPajama-Data-v2", "default", "train", 0.20, "text"),
-    DataSource("dolma_filtered", "allenai/dolma-v1_6-sample", None, "train", 0.10, "text"),
+    DataSource("dolma_filtered", "allenai/dolma", None, "train", 0.10, "text"),
     DataSource("openwebmath", "open-web-math/openwebmath", None, "train", 0.05, "content"),
     DataSource("proof_pile_2", "breakend/proof-pile-2", None, "train", 0.03, "content"),
     DataSource("the_stack_v2", "bigcode/the-stack-v2", "data", "train", 0.07, "content"),
