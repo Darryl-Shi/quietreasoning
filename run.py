@@ -210,7 +210,7 @@ def download_popqa_dataset(output_dir: Path, eval_samples: int) -> Path:
     if target_path.exists():
         return target_path
     LOGGER.info("Auto-pulling PopQA (samples=%d)", eval_samples)
-    dataset = load_dataset("akariasai/PopQA", split="train", streaming=True)
+    dataset = load_dataset("akariasai/PopQA", split="test", streaming=True)
     target_path.parent.mkdir(parents=True, exist_ok=True)
     with target_path.open("w") as f:
         for record in take_examples(dataset, eval_samples):
@@ -227,7 +227,7 @@ def download_long_context_dataset(output_dir: Path, long_samples: int) -> Option
         return target_path
     LOGGER.info("Auto-pulling LongBench NarrativeQA (samples=%d)", long_samples)
     try:
-        dataset = load_dataset("Muennighoff/longbench", "narrativeqa", split="validation", streaming=True)
+        dataset = load_dataset("zai-org/LongBench", "narrativeqa", split="validation", streaming=True)
     except Exception as exc:  # pragma: no cover - optional dataset
         LOGGER.warning("Failed to download LongBench: %s", exc)
         return None
