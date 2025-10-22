@@ -1,0 +1,84 @@
+Digraph G {
+  rankdir=TB;
+  graph [fontsize=12, fontname="Helvetica"];
+  node [shape=record, fontname="Helvetica", fontsize=11, style=filled, fillcolor="#F5F5F5"];
+  edge [fontname="Helvetica", fontsize=10];
+
+  subgraph cluster_transformer {
+    label="Transformer Block";
+    color="#B0BEC5";
+    attn_norm [label="RMSNorm"];
+    attn [label="Multi-Head Attention | RoPE | qkv proj"];
+    ssm_gate [label="SSM Gate | g=σ(MLP(h_ws))\noptional", fillcolor="#E8F5E9"];
+    ssm [label="Selective SSM\nstate=128", fillcolor="#E8F5E9"];
+    ff_norm [label="RMSNorm"];
+    ff [label="SwiGLU FFN\nLinear→SwiGLU→Linear"];
+
+    attn_norm -> attn -> ff_norm;
+    attn_norm -> ssm_gate -> ssm -> ff_norm [style=dashed, color="#66BB6A", label="g"];
+    ff_norm -> ff;
+  }
+
+  subgraph cluster_workspace {
+    label="Workspace Iteration";
+    color="#B0BEC5";
+    ws_slots [label="Slots (64×1024)"];
+    ws_cross [label="Slot Attention\nCross-attn 8 heads", fillcolor="#FFE6F0"];
+    ws_grn [label="Gated Residual Network", fillcolor="#FFE6F0"];
+    ws_halt [label="Halting scalar\nσ(MLP(mean slots))", fillcolor="#FFE6F0"];
+
+    ws_slots -> ws_cross -> ws_grn -> ws_slots [label="T≤3", color="#EC407A"];
+    ws_grn -> ws_halt;
+  }
+
+  subgraph cluster_router {
+    label="Router";
+    color="#B0BEC5";
+    router_in [label="Workspace summary"];
+    router_mlp [label="MLP", fillcolor="#E8F5E9"];
+    router_out [label="Decisions | g_ssm | use_pkm | episodic_k | knn_lambda | adapter_mask"];
+    router_z [label="z-loss + entropy floor", shape=box, fillcolor="#E1F5FE"];
+
+    router_in -> router_mlp -> router_out;
+    router_out -> router_z;
+  }
+
+  subgraph cluster_memory {
+    label="Memory Modules";
+    color="#B0BEC5";
+    pkm_q [label="PKM Query proj\n(d→d)"];
+    pkm_lookup [label="Product-key lookup\ntop-32", fillcolor="#B2EBF2"];
+    pkm_value [label="Int8 values\n256d → d", fillcolor="#B2EBF2"];
+
+    episodic_encode [label="Episodic encoder\nmean pool", fillcolor="#C8E6C9"];
+    episodic_index [label="FAISS/ScaNN index", fillcolor="#C8E6C9"];
+    episodic_logic [label="Bayesian surprise gating", fillcolor="#C8E6C9"];
+
+    knn_lookup [label="kNN search\nIVF-PQ", fillcolor="#D1C4E9"];
+    knn_blend [label="λ interpolation\np(y)=λ p_knn+(1-λ)p_model", fillcolor="#D1C4E9"];
+
+    kv_snap [label="SnapKV selector", fillcolor="#FFECB3"];
+    kv_quant [label="INT8/INT4 quant", fillcolor="#FFECB3"];
+
+    pkm_q -> pkm_lookup -> pkm_value;
+    episodic_encode -> episodic_logic -> episodic_index;
+    knn_lookup -> knn_blend;
+    kv_snap -> kv_quant;
+  }
+
+  transformer_out [label="Upper block activations", shape=box];
+  workspace_summary [label="Workspace summary", shape=box];
+
+  attn -> transformer_out;
+  workspace_summary -> router_in;
+  router_out -> pkm_q [color="#29B6F6"];
+  router_out -> episodic_logic [color="#66BB6A"];
+  router_out -> knn_lookup [color="#AB47BC"];
+  router_out -> kv_snap [color="#FFA726"];
+  router_out -> ff [color="#EC407A", label="Adapters"];
+
+  pkm_value -> transformer_out;
+  episodic_index -> transformer_out;
+  knn_blend -> transformer_out;
+  kv_quant -> transformer_out;
+}

@@ -1,0 +1,69 @@
+digraph QuietReasoning {
+  rankdir=LR;
+  graph [splines=true, fontsize=12, fontname="Helvetica"];
+  node [shape=box, style=filled, fillcolor="#F5F5F5", fontname="Helvetica"];
+  edge [fontname="Helvetica"];
+
+  subgraph cluster_input {
+    label="Inputs";
+    color="#CCCCCC";
+    tokenizer [label="SentencePiece\n50k vocab", shape=parallelogram, fillcolor="#E8F0FE"];
+    tokens [label="Token Embeddings\n(d=2304)", shape=box, fillcolor="#FFF7E6"];
+    tokenizer -> tokens;
+  }
+
+  subgraph cluster_trunk {
+    label="Transformer Trunk";
+    color="#CCCCCC";
+    lower_blocks [label="Blocks 1-20\n(Attention + SwiGLU)"];
+    ssm_blocks [label="Blocks 10 & 20\nLight SSM (Mamba)", fillcolor="#E6F4EA"];
+    upper_blocks [label="Blocks 21-28\nAttention + SwiGLU"];
+    lower_blocks -> ssm_blocks -> upper_blocks [style=dashed];
+  }
+
+  subgraph cluster_workspace {
+    label="Latent Workspace";
+    color="#CCCCCC";
+    workspace [label="Slot Attention\n64 slots × 1024d\nHalting ≤3 steps", shape=box, fillcolor="#FFE6F0"];
+  }
+
+  subgraph cluster_router {
+    label="Workspace Router";
+    color="#CCCCCC";
+    router [label="Router MLP\n(z-loss + entropy floor)", shape=box, fillcolor="#E8F5E9"];
+  }
+
+  subgraph cluster_memory {
+    label="Memory & Experts";
+    color="#CCCCCC";
+    kv [label="SnapKV Cache\nStreaming + Quant", fillcolor="#FFF3CD"];
+    pkm [label="Product-Key Memory\n4M slots, int8", fillcolor="#E0F7FA"];
+    episodic [label="Episodic Store\nFAISS / ScaNN", fillcolor="#E0F2F1"];
+    knn [label="kNN-LM\n5M entries", fillcolor="#F3E5F5"];
+    adapters [label="Adapter Bank\nLoRA r=16 + IA³", fillcolor="#FCE4EC"];
+  }
+
+  subgraph cluster_output {
+    label="Outputs";
+    color="#CCCCCC";
+    decoder [label="LM Head\nAnswer-only logits", shape=box, fillcolor="#EDE7F6"];
+  }
+
+  tokens -> lower_blocks;
+  lower_blocks -> workspace;
+  workspace -> router;
+  router -> upper_blocks;
+  router -> pkm;
+  router -> episodic;
+  router -> knn;
+  router -> adapters;
+  upper_blocks -> decoder;
+  kv -> upper_blocks [label="Context reuse", color="#FFB74D"];
+  pkm -> upper_blocks [label="Semantic recall", color="#26C6DA"];
+  episodic -> upper_blocks [label="Episodic recall", color="#26A69A"];
+  knn -> decoder [label="Rare entity mix", color="#AB47BC"];
+  adapters -> upper_blocks [label="Adapter fusion", color="#EC407A"];
+  workspace -> kv [label="SnapKV plan", style=dashed, color="#FFB74D"];
+  workspace -> episodic [label="Write on surprise", style=dashed, color="#26A69A"];
+  workspace -> knn [label="Use rare entities", style=dashed, color="#AB47BC"];
+}
