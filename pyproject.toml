@@ -25,8 +25,12 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["setuptools>=65", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.package-data]
-"quietreasoning" = ["py.typed"]
+[tool.hatch.build.targets.wheel]
+packages = ["quietreasoning"]
+include = ["quietreasoning/py.typed"]
+
+[tool.hatch.build.targets.sdist]
+include = ["quietreasoning", "pyproject.toml", "README.md", "spec.md", "docs"]
