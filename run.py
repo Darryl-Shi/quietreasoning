@@ -9,6 +9,7 @@ import logging
 import shutil
 import time
 import os
+import zipfile
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional
@@ -221,35 +222,60 @@ def download_popqa_dataset(output_dir: Path, eval_samples: int) -> Path:
     return target_path
 
 
+LONG_BENCH_REPO = "THUDM/LongBench"
+LONG_BENCH_ARCHIVE = "data.zip"
+LONG_BENCH_MEMBER = "data/narrativeqa.jsonl"
+
+
 def download_long_context_dataset(output_dir: Path, long_samples: int) -> Optional[Path]:
     target_path = output_dir / "data" / "long_context.jsonl"
     if target_path.exists():
         return target_path
     LOGGER.info("Auto-pulling LongBench NarrativeQA (samples=%d)", long_samples)
     try:
-        dataset = load_dataset("zai-org/LongBench", "narrativeqa", split="validation", streaming=True)
+        archive_path = hf_hub_download(LONG_BENCH_REPO, filename=LONG_BENCH_ARCHIVE, repo_type="dataset")
     except Exception as exc:  # pragma: no cover - optional dataset
-        LOGGER.warning("Failed to download LongBench: %s", exc)
+        LOGGER.warning("Failed to download LongBench archive: %s", exc)
         return None
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    with target_path.open("w") as f:
-        for record in take_examples(dataset, long_samples):
-            document = record.get("context") or record.get("document") or record.get("input") or ""
-            question = record.get("question") or record.get("query") or ""
-            answers = record.get("answers") or record.get("answer") or record.get("output") or ""
-            if isinstance(answers, list):
-                answer = answers[0]
-            else:
-                answer = answers
-            json.dump(
-                {
-                    "document": str(document),
-                    "question": str(question),
-                    "answer": str(answer),
-                },
-                f,
-            )
-            f.write("\n")
+    count = 0
+    try:
+        with zipfile.ZipFile(archive_path) as zf:
+            with zf.open(LONG_BENCH_MEMBER) as member:
+                with target_path.open("w") as f:
+                    for raw_line in member:
+                        record = json.loads(raw_line.decode("utf-8"))
+                        document = record.get("context") or record.get("document") or record.get("input") or ""
+                        question = record.get("question") or record.get("query") or ""
+                        answers = record.get("answers") or record.get("answer") or record.get("output") or ""
+                        if isinstance(answers, list):
+                            answer = answers[0]
+                        else:
+                            answer = answers
+                        json.dump(
+                            {
+                                "document": str(document),
+                                "question": str(question),
+                                "answer": str(answer),
+                            },
+                            f,
+                        )
+                        f.write("\n")
+                        count += 1
+                        if count >= long_samples:
+                            break
+    except KeyError as exc:  # pragma: no cover - optional dataset
+        LOGGER.warning("LongBench archive missing %s: %s", LONG_BENCH_MEMBER, exc)
+        target_path.unlink(missing_ok=True)
+        return None
+    except Exception as exc:  # pragma: no cover - optional dataset
+        LOGGER.warning("Failed to unpack LongBench NarrativeQA split: %s", exc)
+        target_path.unlink(missing_ok=True)
+        return None
+    if count == 0:
+        LOGGER.warning("LongBench NarrativeQA yielded no records; check archive integrity")
+        target_path.unlink(missing_ok=True)
+        return None
     return target_path
 
 

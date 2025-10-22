@@ -187,6 +187,8 @@ class TransformerBlock(nn.Module):
         mask: Optional[Array],
         deterministic: bool,
         rope_cache: Optional[Tuple[Array, Array]] = None,
+        workspace_summary: Optional[Array] = None,
+        ssm_global_gate: Optional[Array] = None,
     ) -> Tuple[Array, AttentionMetadata]:
         normed = RMSNorm(dtype=self.dtype, name=f"attn_norm_{self.layer_idx}")(x)
         attn_out, attn_meta = MultiHeadAttention(

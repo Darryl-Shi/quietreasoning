@@ -79,6 +79,36 @@ class QuietReasoningModel(nn.Module):
             dtype=self.dtype,
             kernel_init=nn.initializers.normal(stddev=0.02),
         )
+        blocks: List[TransformerBlock] = []
+        for layer_idx in range(self.config.layers):
+            ssm_module = None
+            if (layer_idx + 1) in self.config.ssm.blocks:
+                ssm_module = WorkspaceGatedSSM(
+                    d_model=self.config.d_model,
+                    state_dim=self.config.ssm.state_dim,
+                    dtype=self.dtype,
+                    name=f"ssm_{layer_idx}",
+                )
+            blocks.append(
+                TransformerBlock(
+                    d_model=self.config.d_model,
+                    n_heads=self.config.n_heads,
+                    ff_dim=self.config.ffn_inner,
+                    dropout_rate=0.0,
+                    rotary=self.config.rotary_embedding,
+                    dtype=self.dtype,
+                    layer_idx=layer_idx,
+                    ssm_layer=ssm_module,
+                    name=f"block_{layer_idx}",
+                )
+            )
+        self.blocks = blocks
+        self.pkm_backproj = nn.Dense(
+            self.config.d_model,
+            dtype=self.dtype,
+            kernel_init=nn.initializers.xavier_uniform(),
+            name="pkm_backproj",
+        )
 
     def _rope_cache(self, seq_len: int) -> Optional[Tuple[Array, Array]]:
         if not self.config.rotary_embedding:
@@ -134,27 +164,7 @@ class QuietReasoningModel(nn.Module):
         workspace_steps = None
         workspace_slots = None
 
-        for layer_idx in range(self.config.layers):
-            ssm_module = None
-            if (layer_idx + 1) in self.config.ssm.blocks:
-                ssm_module = WorkspaceGatedSSM(
-                    d_model=self.config.d_model,
-                    state_dim=self.config.ssm.state_dim,
-                    dtype=self.dtype,
-                    name=f"ssm_{layer_idx}",
-                )
-
-            block = TransformerBlock(
-                d_model=self.config.d_model,
-                n_heads=self.config.n_heads,
-                ff_dim=self.config.ffn_inner,
-                dropout_rate=0.0,
-                rotary=self.config.rotary_embedding,
-                dtype=self.dtype,
-                layer_idx=layer_idx,
-                ssm_layer=ssm_module,
-                name=f"block_{layer_idx}",
-            )
+        for layer_idx, block in enumerate(self.blocks):
             x, meta = block(
                 x,
                 attention_mask_processed,
@@ -197,12 +207,7 @@ class QuietReasoningModel(nn.Module):
         )
 
         pkm_result = self.pkm(workspace_summary, self.config.memory.pkm.topk)
-        pkm_projected = nn.Dense(
-            self.config.d_model,
-            dtype=self.dtype,
-            kernel_init=nn.initializers.xavier_uniform(),
-            name="pkm_backproj",
-        )(pkm_result.values)
+        pkm_projected = self.pkm_backproj(pkm_result.values)
         x = x + gated_router.use_pkm[:, None, None] * pkm_projected[:, None, :]
 
         adapter_residual = self.adapter_bank(x.mean(axis=1), gated_router.adapter_mask)
