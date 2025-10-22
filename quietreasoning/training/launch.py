@@ -30,7 +30,6 @@ def configure_environment(cfg: TPULaunchConfig) -> None:
     if cfg.coordinator_address:
         os.environ.setdefault("COORDINATOR_ADDRESS", f"{cfg.coordinator_address}:{cfg.coordinator_port}")
     os.environ.setdefault("JAX_USE_PJRT_C_API_ON_TPU", "true")
-    os.environ.setdefault("XLA_FLAGS", "--xla_gpu_enable_triton=false")
 
 
 def initialize_distributed(cfg: TPULaunchConfig) -> None:
