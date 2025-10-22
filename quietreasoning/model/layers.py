@@ -10,6 +10,11 @@ import jax.numpy as jnp
 from flax import linen as nn
 from flax import struct
 
+try:
+    from jax.sharding import PartitionSpec as _PartitionSpec
+except (ImportError, AttributeError):
+    _PartitionSpec = None  # Compatible with older JAX versions
+
 Array = jnp.ndarray
 PRNGKey = jax.Array
 
@@ -17,8 +22,12 @@ PRNGKey = jax.Array
 def with_sharding_constraint(x: Array, spec: Any) -> Array:
     """Convenience wrapper allowing compilation without sharding meshes."""
     try:
-        return jax.lax.with_sharding_constraint(x, spec)
-    except ValueError:
+        partition_spec = spec
+        if _PartitionSpec is not None and spec is not None and not isinstance(spec, _PartitionSpec):
+            if isinstance(spec, (tuple, list)):
+                partition_spec = _PartitionSpec(*spec)
+        return jax.lax.with_sharding_constraint(x, partition_spec)
+    except (ValueError, TypeError):
         return x
 
 
