@@ -20,7 +20,12 @@ class TPULaunchConfig:
 
 
 def configure_environment(cfg: TPULaunchConfig) -> None:
-    os.environ.setdefault("TPU_CHIPS_PER_HOST_BOUNDS", cfg.topology)
+    topology = cfg.topology
+    if topology:
+        parts = topology.lower().split("x")
+        if len(parts) == 2:
+            topology = f"{topology}x1"
+        os.environ.setdefault("TPU_CHIPS_PER_HOST_BOUNDS", topology)
     if cfg.coordinator_address:
         os.environ.setdefault("COORDINATOR_ADDRESS", f"{cfg.coordinator_address}:{cfg.coordinator_port}")
     os.environ.setdefault("JAX_USE_PJRT_C_API_ON_TPU", "true")

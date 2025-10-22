@@ -60,7 +60,8 @@ script_lines = [
 ]
 if repo:
     script_lines.append(
-        f'if [ ! -d "$HOME/quietreasoning" ]; then git clone {shlex.quote(repo)} "$HOME/quietreasoning"; fi'
+        f'if [ -d "$HOME/quietreasoning/.git" ]; then git -C "$HOME/quietreasoning" pull --ff-only; '
+        f'else git clone {shlex.quote(repo)} "$HOME/quietreasoning"; fi'
     )
 script_lines.extend([
     'cd "$HOME/quietreasoning"',
