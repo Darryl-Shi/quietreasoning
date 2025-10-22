@@ -10,7 +10,7 @@ dependencies = [
   "flax>=0.8.1",
   "optax>=0.2.3",
   "orbax-checkpoint>=0.5.7",
-  "numpy>=1.26.0",
+  "numpy<2",
   "datasets>=2.19.0",
   "huggingface-hub>=0.23.0",
   "wandb>=0.16.0",

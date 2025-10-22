@@ -11,7 +11,7 @@ import numpy as np
 
 try:
     import faiss  # type: ignore
-except ImportError:  # pragma: no cover
+except (ImportError, OSError):  # pragma: no cover
     faiss = None
 
 from quietreasoning.memory.episodic import EpisodicEntry, EpisodicMemory

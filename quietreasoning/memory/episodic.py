@@ -15,7 +15,7 @@ except ImportError:  # pragma: no cover
 
 try:
     import scann  # type: ignore
-except ImportError:  # pragma: no cover
+except (ImportError, OSError):  # pragma: no cover
     scann = None
 
 
@@ -146,4 +146,3 @@ class EpisodicMemory:
         vectors = np.stack([self.entries[int(i)].embedding for i in idx if i >= 0], axis=0)
         meta = [self.entries[int(i)].metadata for i in idx if i >= 0]
         return vectors, meta
-
