@@ -55,7 +55,7 @@ class DataSource:
 
 
 PRETRAIN_PLAN: List[DataSource] = [
-    DataSource("fineweb2", "HuggingFaceFW/fineweb-2", "eng_Latn", "train", 0.55, "text"),
+    DataSource("fineweb1", "HuggingFaceFW/fineweb", None, "train", 0.55, "text"),
     DataSource("redpajama_v2", "togethercomputer/RedPajama-Data-v2", "default", "train", 0.20, "text"),
     DataSource("dolma_filtered", "allenai/dolma-v1_6-sample", None, "train", 0.10, "text"),
     DataSource("openwebmath", "open-web-math/openwebmath", None, "train", 0.05, "content"),
@@ -166,9 +166,19 @@ def download_pretrain_sources(output_dir: Path, total_docs: int) -> Path:
         LOGGER.info("Downloading %s (%s), target docs=%d", source.name, source.dataset_id, target)
         subset = source.subset
         if subset is None:
+            try:
+                from datasets import get_dataset_config_names
+
+                config_names = get_dataset_config_names(source.dataset_id)
+            except Exception as err:
+                LOGGER.warning("Unable to list configs for %s: %s", source.dataset_id, err)
+                config_names = []
+            if config_names:
+                subset = config_names[0]
+                LOGGER.info("Using config %s for dataset %s", subset, source.dataset_id)
+        if subset is None:
             dataset = load_dataset(
                 source.dataset_id,
-                "default",
                 split=source.split,
                 streaming=True,
             )
