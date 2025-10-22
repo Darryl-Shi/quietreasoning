@@ -60,7 +60,7 @@ PRETRAIN_PLAN: List[DataSource] = [
     # Dolma script is unsupported in streaming loader; user can add custom corpora externally.
     DataSource("openwebmath", "open-web-math/open-web-math", None, "train", 0.07, "content"),
     DataSource("proof_pile_2", "xavierdurawa/proof-pile-2-streaming", None, "train", 0.03, "content"),
-    DataSource("the_stack_v2", "bigcode/the-stack-v2", "data", "train", 0.10, "content"),
+    DataSource("the_stack_v2", "bigcode/the-stack-v2", "default", "train", 0.10, "content"),
 ]
 
 
