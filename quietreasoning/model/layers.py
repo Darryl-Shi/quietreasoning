@@ -77,8 +77,16 @@ def apply_rotary_pos_emb(q: Array, k: Array, freqs: Array) -> Tuple[Array, Array
     q = reshape_for_broadcast(q)
     k = reshape_for_broadcast(k)
     cos, sin = freqs
-    cos = cos[..., None]
-    sin = sin[..., None]
+    if cos.ndim == 2:
+        cos = cos[None, :, None, :, None]
+    else:
+        while cos.ndim < q.ndim:
+            cos = cos[..., None]
+    if sin.ndim == 2:
+        sin = sin[None, :, None, :, None]
+    else:
+        while sin.ndim < q.ndim:
+            sin = sin[..., None]
     q1, q2 = jnp.split(q, 2, axis=-2)
     k1, k2 = jnp.split(k, 2, axis=-2)
     q_rot = jnp.concatenate([q1 * cos - q2 * sin, q1 * sin + q2 * cos], axis=-2)
