@@ -55,7 +55,7 @@ class DataSource:
 
 
 PRETRAIN_PLAN: List[DataSource] = [
-    DataSource("fineweb2", "HuggingFaceFW/fineweb-2", None, "train", 0.55, "text"),
+    DataSource("fineweb2", "HuggingFaceFW/fineweb-2", "eng_Latn", "train", 0.55, "text"),
     DataSource("redpajama_v2", "togethercomputer/RedPajama-Data-v2", "default", "train", 0.20, "text"),
     DataSource("dolma_filtered", "allenai/dolma-v1_6-sample", None, "train", 0.10, "text"),
     DataSource("openwebmath", "open-web-math/openwebmath", None, "train", 0.05, "content"),
@@ -164,12 +164,21 @@ def download_pretrain_sources(output_dir: Path, total_docs: int) -> Path:
             manifest.append({"name": source.name, "path": str(tfrecord_path), "examples": "existing"})
             continue
         LOGGER.info("Downloading %s (%s), target docs=%d", source.name, source.dataset_id, target)
-        dataset = load_dataset(
-            source.dataset_id,
-            source.subset,
-            split=source.split,
-            streaming=True,
-        )
+        subset = source.subset
+        if subset is None:
+            dataset = load_dataset(
+                source.dataset_id,
+                "default",
+                split=source.split,
+                streaming=True,
+            )
+        else:
+            dataset = load_dataset(
+                source.dataset_id,
+                subset,
+                split=source.split,
+                streaming=True,
+            )
         count = 0
         with tf.io.TFRecordWriter(str(tfrecord_path)) as writer:
             for example in take_examples(dataset, target):
