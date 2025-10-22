@@ -8,11 +8,13 @@ import json
 import logging
 import shutil
 import time
+import os
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional
 
 import jax
+import jax.distributed as jdist
 import jax.numpy as jnp
 import numpy as np
 import tensorflow as tf
@@ -102,12 +104,14 @@ def parse_args() -> argparse.Namespace:
 def maybe_initialize_tpu(args: argparse.Namespace) -> None:
     if args.tpu_topology:
         address, port = (args.coordinator.split(":") + ["12345"])[:2] if args.coordinator else ("", "12345")
+        process_id = int(os.environ.get("JAX_PROCESS_INDEX", 0))
+        process_count = int(os.environ.get("JAX_PROCESS_COUNT", 1))
         cfg = TPULaunchConfig(
             topology=args.tpu_topology,
             coordinator_address=address or None,
             coordinator_port=int(port),
-            process_id=jax.process_index(),
-            process_count=jax.process_count(),
+            process_id=process_id,
+            process_count=process_count,
         )
         initialize_distributed(cfg)
 

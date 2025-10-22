@@ -117,6 +117,14 @@ spec.md                       # Original engineering spec for Variant-1 (+ light
    These are not run automatically by `run.py`; execute them when you are ready to seed PKM/kNN memory.
 6. **Telemetry (optional)**
    Pass `--wandb-project your_project` (plus optional `--wandb-entity`, `--wandb-tags`) to log training/eval metrics, dataset manifests, and throughput to Weights & Biases. Non-root TPU hosts run in disabled mode.
+7. **Multi-host launch**
+   Use `launch_tpu.sh` to fan out the command across TPU VM workers:
+   ```bash
+   export REPO_URL=https://github.com/your/repo.git
+   export WANDB_API_KEY=xxxxxxxxxxxxxxxx
+   ./launch_tpu.sh PROJECT TPU_NAME ZONE "cd quietreasoning && python run.py --auto-pull --output-dir checkpoints --steps 1000000 --tpu-topology 2x2 --wandb-project quietreasoning --wandb-run train-run-1"
+   ```
+   Replace `PROJECT`, `TPU_NAME`, and `ZONE` with your setup. The script resolves worker indices and starts the job on each VM so JAX distributed init succeeds.
 
 During training, the runner logs stage-aware metrics, evaluates on PopQA (and LongBench NarrativeQA if downloaded), and saves Orbax checkpoints inside `output-dir`.
 

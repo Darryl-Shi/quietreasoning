@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import jax
+import jax.distributed as jdist
 
 
 @dataclass
@@ -28,6 +29,8 @@ def configure_environment(cfg: TPULaunchConfig) -> None:
 
 def initialize_distributed(cfg: TPULaunchConfig) -> None:
     configure_environment(cfg)
+    if jdist.is_initialized():
+        return
     jax.distributed.initialize(
         coordinator_address=os.environ.get("COORDINATOR_ADDRESS", ""),
         num_processes=cfg.process_count,
