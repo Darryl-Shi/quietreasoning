@@ -27,7 +27,7 @@ def with_sharding_constraint(x: Array, spec: Any) -> Array:
             if isinstance(spec, (tuple, list)):
                 partition_spec = _PartitionSpec(*spec)
         return jax.lax.with_sharding_constraint(x, partition_spec)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, RuntimeError):
         return x
 
 
