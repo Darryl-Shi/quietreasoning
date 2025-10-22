@@ -11,6 +11,9 @@ dependencies = [
   "optax>=0.2.3",
   "orbax-checkpoint>=0.5.7",
   "numpy>=1.26.0",
+  "datasets>=2.19.0",
+  "huggingface-hub>=0.23.0",
+  "wandb>=0.16.0",
   "sentencepiece>=0.1.99",
   "chex>=0.1.86",
   "einops>=0.7.0",
@@ -27,4 +30,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.package-data]
 "quietreasoning" = ["py.typed"]
-
