@@ -100,6 +100,8 @@ class ModelConfig:
     norm: str = "rmsnorm"
     tokenizer_path: Optional[str] = None
     vocab_size: int = 50_000
+    dtype: str = "float32"
+    param_dtype: str = "float32"
     workspace: WorkspaceConfig = field(default_factory=WorkspaceConfig)
     ssm: SSMConfig = field(default_factory=SSMConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)

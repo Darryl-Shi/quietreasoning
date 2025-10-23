@@ -45,6 +45,46 @@ def configure_logging(level: str) -> None:
     )
 
 
+def configure_model_for_runtime(cfg: QuietReasoningConfig) -> None:
+    """Adapt model hyperparameters to the available devices."""
+
+    devices = jax.local_devices()
+    if not devices:
+        return
+
+    platforms = {device.platform for device in devices}
+
+    if platforms == {"tpu"}:
+        LOGGER.info(
+            "Detected TPU topology with %d devices; enabling bfloat16 activations.",
+            len(devices),
+        )
+        cfg.model.dtype = "bfloat16"
+        cfg.model.param_dtype = "float32"
+        return
+
+    if len(devices) == 1 and platforms.issubset({"cpu", "gpu"}):
+        platform = next(iter(platforms))
+        LOGGER.warning(
+            "Single %s device detected; automatically downscaling model dimensions.",
+            platform,
+        )
+        cfg.model.layers = min(cfg.model.layers, 8)
+        cfg.model.d_model = min(cfg.model.d_model, 1024)
+        cfg.model.n_heads = min(cfg.model.n_heads, 8)
+        cfg.model.ffn_inner = min(cfg.model.ffn_inner, 4096)
+        cfg.model.context = min(cfg.model.context, 2048)
+        cfg.model.workspace.slots = min(cfg.model.workspace.slots, 16)
+        cfg.model.workspace.dim = min(cfg.model.workspace.dim, cfg.model.d_model)
+        cfg.model.workspace.inner_loop_max = min(cfg.model.workspace.inner_loop_max, 2)
+        cfg.model.memory.pkm.slots = min(cfg.model.memory.pkm.slots, 65_536)
+        cfg.model.memory.pkm.codebooks = min(cfg.model.memory.pkm.codebooks, 2048)
+        cfg.model.memory.pkm.value_dim = min(cfg.model.memory.pkm.value_dim, cfg.model.d_model)
+        cfg.model.memory.pkm.topk = min(cfg.model.memory.pkm.topk, 16)
+        cfg.model.memory.adapter.num_adapters = min(cfg.model.memory.adapter.num_adapters, 4)
+        cfg.model.memory.adapter.lora_rank = min(cfg.model.memory.adapter.lora_rank, 8)
+
+
 @dataclass
 class DataSource:
     name: str
@@ -423,6 +463,7 @@ def main() -> None:
 
     cfg = QuietReasoningConfig()
     cfg.model.tokenizer_path = str(tokenizer_path)
+    configure_model_for_runtime(cfg)
 
     wandb_run = init_wandb_run(args, cfg, tokenizer_path)
 

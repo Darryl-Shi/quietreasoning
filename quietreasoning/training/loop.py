@@ -26,7 +26,11 @@ class QuietTrainState(train_state.TrainState):
 
 
 def create_train_state(rng: jax.Array, cfg: QuietReasoningConfig) -> QuietTrainState:
-    model = QuietReasoningModel(cfg.model)
+    model = QuietReasoningModel(
+        cfg.model,
+        dtype=jnp.dtype(cfg.model.dtype),
+        param_dtype=jnp.dtype(cfg.model.param_dtype),
+    )
 
     dummy_input = jnp.zeros((1, cfg.model.context), dtype=jnp.int32)
     variables = model.init({"params": rng}, dummy_input, deterministic=True)
