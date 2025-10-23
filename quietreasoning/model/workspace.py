@@ -73,15 +73,13 @@ class WorkspaceBlock(nn.Module):
         halting_acc = jnp.zeros((batch,), dtype=self.dtype)
         step_counts = jnp.zeros((batch,), dtype=self.dtype)
 
-        def body(step: int, carry):
-            slots, halting_acc, step_counts = carry
+        for _ in range(self.max_steps):
             attn_out = self.attn(
-                slots,
-                token_states,
-                token_states,
+                inputs_q=slots,
+                inputs_k=token_states,
+                inputs_v=token_states,
                 mask=token_mask,
                 deterministic=deterministic,
-                precision=jax.lax.Precision.HIGHEST,
             )
             candidate_slots = self.grn(slots + attn_out)
             pooled = jnp.mean(candidate_slots, axis=1)
@@ -90,18 +88,12 @@ class WorkspaceBlock(nn.Module):
             still_running_f = still_running.astype(self.dtype)
 
             halting_acc = halting_acc + still_running_f * halt_prob
-            halting_acc = jnp.clip(halting_acc, a_min=0.0, a_max=1.0)
+            halting_acc = jnp.clip(halting_acc, 0.0, 1.0)
             step_counts = step_counts + still_running_f
 
             slots = jnp.where(
                 still_running_f[:, None, None] > 0.0, candidate_slots, slots
             )
-            return slots, halting_acc, step_counts
-
-        slots, halting_acc, step_counts = jax.lax.fori_loop(
-            0, self.max_steps, body, (slots, halting_acc, step_counts)
-        )
 
         summary = jnp.mean(slots, axis=1)
         return summary, slots, step_counts
-

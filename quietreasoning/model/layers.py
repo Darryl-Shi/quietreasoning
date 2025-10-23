@@ -165,7 +165,6 @@ class MultiHeadAttention(nn.Module):
             broadcast_dropout=mask is None,
             deterministic=deterministic,
             mask=mask,
-            attention_axes=self.attention_axes,
         )
         out = nn.DenseGeneral(
             x.shape[-1],
@@ -228,7 +227,7 @@ class TransformerBlock(nn.Module):
             x = x + ssm_out
             if ssm_global_gate is not None:
                 ssm_gate = ssm_gate * jnp.squeeze(ssm_global_gate)
-            attn_meta.ssm_gate = ssm_gate
+            attn_meta = attn_meta.replace(ssm_gate=ssm_gate)
 
         ff_input = RMSNorm(dtype=self.dtype, name=f"ff_norm_{self.layer_idx}")(x)
         ff_out = SwiGLU(self.ff_dim, self.d_model, dtype=self.dtype, name=f"swiglu_{self.layer_idx}")(ff_input)

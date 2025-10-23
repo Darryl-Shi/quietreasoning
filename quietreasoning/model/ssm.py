@@ -27,14 +27,19 @@ class SelectiveStateSpace(nn.Module):
     def __call__(self, x: Array) -> Array:
         batch, length, _ = x.shape
 
+        if self.conv_kernel > 1:
+            pad = ((0, 0), (self.conv_kernel - 1, 0), (0, 0))
+            conv_input = jnp.pad(x, pad)
+        else:
+            conv_input = x
         conv = nn.Conv(
             features=self.d_model,
             kernel_size=(self.conv_kernel,),
-            padding="LEFT",
+            padding="VALID",
             feature_group_count=self.d_model,
             dtype=self.dtype,
             name="depthwise_conv",
-        )(x)
+        )(conv_input)
 
         proj = nn.Dense(
             features=2 * self.state_dim,
