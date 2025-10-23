@@ -23,5 +23,6 @@ class SentencePieceTokenizer:
         return tokens
 
     def decode(self, tokens: Iterable[int]) -> str:
-        return self.processor.decode(list(tokens))
-
+        # SentencePiece expects plain Python ints; JAX/NumPy scalars trigger a runtime error.
+        normalized_tokens = [int(token) for token in tokens]
+        return self.processor.decode(normalized_tokens)
