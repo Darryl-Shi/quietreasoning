@@ -25,4 +25,11 @@ class SentencePieceTokenizer:
     def decode(self, tokens: Iterable[int]) -> str:
         # SentencePiece expects plain Python ints; JAX/NumPy scalars trigger a runtime error.
         normalized_tokens = [int(token) for token in tokens]
-        return self.processor.decode(normalized_tokens)
+        try:
+            return self.processor.decode_ids(normalized_tokens)
+        except RuntimeError as exc:  # pragma: no cover - debugging aid for dtype mismatches
+            preview = normalized_tokens[:12]
+            raise RuntimeError(
+                "SentencePiece decode failed for token preview "
+                f"{preview} (len={len(normalized_tokens)})."
+            ) from exc
