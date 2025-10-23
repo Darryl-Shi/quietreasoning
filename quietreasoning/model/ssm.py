@@ -51,6 +51,13 @@ class SelectiveStateSpace(nn.Module):
         B_t = nn.softplus(B_t)
         C_t = jnp.tanh(C_t)
 
+        u_proj = nn.Dense(
+            self.state_dim,
+            dtype=self.dtype,
+            kernel_init=nn.initializers.xavier_uniform(),
+            name="state_proj",
+        )(x)
+
         A_log = self.param(
             "A_log",
             nn.initializers.normal(stddev=0.02),
@@ -72,7 +79,7 @@ class SelectiveStateSpace(nn.Module):
             return state, y_t
 
         init_state = jnp.zeros((batch, self.state_dim), dtype=self.dtype)
-        scan_inputs = tuple(jnp.swapaxes(arr, 0, 1) for arr in (x, B_t, C_t))
+        scan_inputs = tuple(jnp.swapaxes(arr, 0, 1) for arr in (u_proj, B_t, C_t))
 
         _, outputs = jax.lax.scan(
             scan_step,
