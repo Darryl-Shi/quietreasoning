@@ -61,6 +61,24 @@ def configure_model_for_runtime(cfg: QuietReasoningConfig) -> None:
         )
         cfg.model.dtype = "bfloat16"
         cfg.model.param_dtype = "bfloat16"
+        if len(devices) < 8:
+            LOGGER.warning(
+                "TPU pod has only %d cores available; reducing model width for memory headroom.",
+                len(devices),
+            )
+            cfg.model.layers = min(cfg.model.layers, 16)
+            cfg.model.d_model = min(cfg.model.d_model, 1536)
+            cfg.model.n_heads = min(cfg.model.n_heads, 16)
+            cfg.model.ffn_inner = min(cfg.model.ffn_inner, 4096)
+            cfg.model.context = min(cfg.model.context, 4096)
+            cfg.model.workspace.slots = min(cfg.model.workspace.slots, 32)
+            cfg.model.workspace.dim = min(cfg.model.workspace.dim, cfg.model.d_model)
+            cfg.model.memory.pkm.slots = min(cfg.model.memory.pkm.slots, 262_144)
+            cfg.model.memory.pkm.codebooks = min(cfg.model.memory.pkm.codebooks, 4096)
+            cfg.model.memory.pkm.value_dim = min(cfg.model.memory.pkm.value_dim, cfg.model.d_model)
+            cfg.model.memory.pkm.topk = min(cfg.model.memory.pkm.topk, 24)
+            cfg.model.memory.adapter.num_adapters = min(cfg.model.memory.adapter.num_adapters, 6)
+            cfg.model.memory.adapter.lora_rank = min(cfg.model.memory.adapter.lora_rank, 12)
         return
 
     if len(devices) == 1 and platforms.issubset({"cpu", "gpu"}):

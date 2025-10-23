@@ -114,6 +114,7 @@ class OptimizerConfig:
     betas: List[float] = field(default_factory=lambda: [0.9, 0.95])
     weight_decay: float = 0.05
     clip_grad_norm: float = 1.0
+    accumulator_dtype: Optional[str] = None
 
 
 @dataclass
