@@ -60,7 +60,7 @@ def configure_model_for_runtime(cfg: QuietReasoningConfig) -> None:
             len(devices),
         )
         cfg.model.dtype = "bfloat16"
-        cfg.model.param_dtype = "float32"
+        cfg.model.param_dtype = "bfloat16"
         return
 
     if len(devices) == 1 and platforms.issubset({"cpu", "gpu"}):
