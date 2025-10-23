@@ -48,8 +48,8 @@ class SelectiveStateSpace(nn.Module):
             name="input_proj",
         )(conv)
         B_t, C_t = jnp.split(proj, 2, axis=-1)
-        B_t = nn.softplus(B_t)
-        C_t = jnp.tanh(C_t)
+        B_t = nn.softplus(B_t).astype(self.dtype)
+        C_t = jnp.tanh(C_t).astype(self.dtype)
 
         u_proj = nn.Dense(
             self.state_dim,
@@ -68,13 +68,14 @@ class SelectiveStateSpace(nn.Module):
             nn.initializers.normal(stddev=0.02),
             (self.state_dim,),
         )
-        A = -nn.softplus(A_log)
-        dt = nn.softplus(dt_log)
+        A = -nn.softplus(A_log).astype(self.dtype)
+        dt = nn.softplus(dt_log).astype(self.dtype)
 
         def scan_step(carry: Array, inputs: Tuple[Array, Array, Array]) -> Tuple[Array, Array]:
             state = carry
             u_t, b_t, c_t = inputs
-            state = (1.0 + dt * A) * state + dt * b_t * u_t
+            one = jnp.asarray(1.0, dtype=self.dtype)
+            state = (one + dt * A) * state + dt * b_t * u_t
             y_t = c_t * state
             return state, y_t
 
