@@ -66,19 +66,19 @@ def configure_model_for_runtime(cfg: QuietReasoningConfig) -> None:
                 "TPU pod has only %d cores available; reducing model width for memory headroom.",
                 len(devices),
             )
-            cfg.model.layers = min(cfg.model.layers, 12)
-            cfg.model.d_model = min(cfg.model.d_model, 768)
-            cfg.model.n_heads = min(cfg.model.n_heads, 12)
-            cfg.model.ffn_inner = min(cfg.model.ffn_inner, 2048)
-            cfg.model.context = min(cfg.model.context, 1024)
-            cfg.model.workspace.slots = min(cfg.model.workspace.slots, 16)
+            cfg.model.layers = min(cfg.model.layers, 8)
+            cfg.model.d_model = min(cfg.model.d_model, 512)
+            cfg.model.n_heads = min(cfg.model.n_heads, 8)
+            cfg.model.ffn_inner = min(cfg.model.ffn_inner, 1536)
+            cfg.model.context = min(cfg.model.context, 512)
+            cfg.model.workspace.slots = min(cfg.model.workspace.slots, 12)
             cfg.model.workspace.dim = min(cfg.model.workspace.dim, cfg.model.d_model)
-            cfg.model.memory.pkm.slots = min(cfg.model.memory.pkm.slots, 131_072)
-            cfg.model.memory.pkm.codebooks = min(cfg.model.memory.pkm.codebooks, 2048)
+            cfg.model.memory.pkm.slots = min(cfg.model.memory.pkm.slots, 65_536)
+            cfg.model.memory.pkm.codebooks = min(cfg.model.memory.pkm.codebooks, 1024)
             cfg.model.memory.pkm.value_dim = min(cfg.model.memory.pkm.value_dim, cfg.model.d_model)
-            cfg.model.memory.pkm.topk = min(cfg.model.memory.pkm.topk, 16)
-            cfg.model.memory.adapter.num_adapters = min(cfg.model.memory.adapter.num_adapters, 4)
-            cfg.model.memory.adapter.lora_rank = min(cfg.model.memory.adapter.lora_rank, 8)
+            cfg.model.memory.pkm.topk = min(cfg.model.memory.pkm.topk, 8)
+            cfg.model.memory.adapter.num_adapters = min(cfg.model.memory.adapter.num_adapters, 2)
+            cfg.model.memory.adapter.lora_rank = min(cfg.model.memory.adapter.lora_rank, 4)
         return
 
     if len(devices) == 1 and platforms.issubset({"cpu", "gpu"}):
@@ -113,7 +113,7 @@ def adjust_batch_size_for_memory(args: argparse.Namespace, cfg: QuietReasoningCo
     if device_count > 0:
         per_device_tokens //= device_count
 
-    max_tokens_per_device = 64_000
+    max_tokens_per_device = 32_000
     if per_device_tokens <= max_tokens_per_device:
         return
 
