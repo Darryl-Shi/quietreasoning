@@ -67,11 +67,11 @@ def configure_model_for_runtime(cfg: QuietReasoningConfig) -> None:
                 len(devices),
             )
             cfg.model.layers = min(cfg.model.layers, 16)
-            cfg.model.d_model = min(cfg.model.d_model, 1536)
-            cfg.model.n_heads = min(cfg.model.n_heads, 16)
-            cfg.model.ffn_inner = min(cfg.model.ffn_inner, 4096)
-            cfg.model.context = min(cfg.model.context, 4096)
-            cfg.model.workspace.slots = min(cfg.model.workspace.slots, 32)
+            cfg.model.d_model = min(cfg.model.d_model, 1280)
+            cfg.model.n_heads = min(cfg.model.n_heads, 12)
+            cfg.model.ffn_inner = min(cfg.model.ffn_inner, 3328)
+            cfg.model.context = min(cfg.model.context, 2048)
+            cfg.model.workspace.slots = min(cfg.model.workspace.slots, 24)
             cfg.model.workspace.dim = min(cfg.model.workspace.dim, cfg.model.d_model)
             cfg.model.memory.pkm.slots = min(cfg.model.memory.pkm.slots, 262_144)
             cfg.model.memory.pkm.codebooks = min(cfg.model.memory.pkm.codebooks, 4096)
@@ -101,6 +101,31 @@ def configure_model_for_runtime(cfg: QuietReasoningConfig) -> None:
         cfg.model.memory.pkm.topk = min(cfg.model.memory.pkm.topk, 16)
         cfg.model.memory.adapter.num_adapters = min(cfg.model.memory.adapter.num_adapters, 4)
         cfg.model.memory.adapter.lora_rank = min(cfg.model.memory.adapter.lora_rank, 8)
+
+
+def adjust_batch_size_for_memory(args: argparse.Namespace, cfg: QuietReasoningConfig) -> None:
+    devices = jax.local_devices()
+    if not devices:
+        return
+
+    per_device_tokens = args.batch_size * cfg.model.context
+    device_count = len(devices)
+    if device_count > 0:
+        per_device_tokens //= device_count
+
+    max_tokens_per_device = 128_000
+    if per_device_tokens <= max_tokens_per_device:
+        return
+
+    suggested_batch = max(1, max_tokens_per_device // max(cfg.model.context, 1))
+    if suggested_batch < args.batch_size:
+        LOGGER.warning(
+            "Reducing batch size from %d to %d to fit memory (%.0f tokens/device).",
+            args.batch_size,
+            suggested_batch,
+            per_device_tokens,
+        )
+        args.batch_size = suggested_batch
 
 
 @dataclass
@@ -482,6 +507,7 @@ def main() -> None:
     cfg = QuietReasoningConfig()
     cfg.model.tokenizer_path = str(tokenizer_path)
     configure_model_for_runtime(cfg)
+    adjust_batch_size_for_memory(args, cfg)
 
     wandb_run = init_wandb_run(args, cfg, tokenizer_path)
 
